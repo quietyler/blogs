@@ -35,7 +35,7 @@ class Blog(db.Model):
 def require_login():
     allowed_routes=["index", "blogs", "logout", "login", "register"]
     if "user" not in session and request.endpoint not in allowed_routes:
-        return render_template ("log-in.html")
+        return redirect('/log-in')
 
 @app.route('/')
 def index():
@@ -83,15 +83,23 @@ def new_blog():
 def login():
 
     if request.method == 'POST':
-
         isUser = User.query.filter_by(name = request.form['user']).first()
+        password = request.form['password']
+        username_error = ''
+        password_error = ''
+
+        if isUser is None:
+            username_error = "user does not exist."
+        if isUser and isUser.password != password:
+            password_error = 'Password is incorrect'
+        if username_error or password_error:
+            return render_template('log-in.html',username = request.form['user'],user_error = username_error,password_error = password_error)
 
         if isUser and isUser.password == request.form['password']:
-
+            print("This ran")
             session['user'] = request.form['user']
-            redirect['/new_blog']
-
-    return render_template('log-in.html')
+            return redirect('/new_blog')
+    return render_template('/log-in.html')
 
 @app.route('/log-out')
 def logout():
@@ -105,12 +113,10 @@ def register():
         username=request.form["username"]
         password=request.form["password"]
         verifypassword=request.form["verifypassword"]
-        email=request.form["email"]
 
         Username_Error=""
         Password_Error=""
         Valid_Error=""
-        Email_Error=""
 
         if len(username)<3 or len(username)>=20:
             Username_Error="Please input valid username."
@@ -120,31 +126,22 @@ def register():
         
         elif password!=verifypassword:
             Valid_Error="Passwords doesn't match."
-    
-        if email:
-            if "@" not in email and  "."not in email:
-                Email_Error="Email not valid."
 
-        if not Username_Error and not Password_Error and not Valid_Error and not Email_Error:
-            return render_template("welcome.html", Username=username, email=email, user_error=Username_Error, password_error=Password_Error, verify_error=Valid_Error, email_error=Email_Error)
+        if not Username_Error and not Password_Error and not Valid_Error:
+            existing_user = User.query.filter_by(name=username).first()
+            if existing_user is not None:
+                username_error = "There is already somebody with that username"
+            else:
+                new_user = User(username, password)
+                db.session.add(new_user)
+                db.session.commit()
+                session['user'] = username
+                print(session['user'])
+                return redirect("/new_blog")
         else:
-            return render_template("index.html", Username=username, email=email, user_error=Username_Error, password_error=Password_Error, verify_error=Valid_Error, email_error=Email_Error)
+            return render_template("register.html", username=username, user_error=Username_Error, password_error=Password_Error, verify_error=Valid_Error)
 
-        
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user is not none:
-            error["username_error"] = "There is already somebody with that username"
-
-        if error["username_error"] == "" and error["password_error"] == "" and error["valid_error"] == "":
-            new_user = User(username, password)
-            db.session.add(new_user)
-            db.session.commit()
-            session['user'] = new_user.username
-            return redirect("/blog")
-
-    return render_template("register.html", title= "Register for this Blog",
-        username_error= username_error["username_error"], password_error= error["password_error"],
-        valid_error= error["valid_error"])
+    return render_template("register.html", title= "Register for this Blog")
 
 if __name__ == "__main__":
     app.run()
