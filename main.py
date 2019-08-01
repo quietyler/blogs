@@ -28,12 +28,12 @@ class Blog(db.Model):
     def __init__(self,title,body,owner):
         self.title = title
         self.body = body
-        self.owner_id = owner 
+        self.owner = owner 
 
 
 @app.before_request
 def require_login():
-    allowed_routes=["index", "blogs", "log-out", "log-in", "register"]
+    allowed_routes=["index", "blogs", "logout", "login", "register"]
     if "user" not in session and request.endpoint not in allowed_routes:
         return render_template ("log-in.html")
 
@@ -50,8 +50,8 @@ def blogs():
     if request.args.get("id") is not None:
         blogs = Blog.query.filter_by(id=request.args['id']).all()
     elif request.args.get("user") is not None:
-        blogs = Blog.query.filter_by(owner = session['user'])
-    return render_template("blogs.html",blogs=blogs)
+        blogs = Blog.query.filter_by(owner_id = request.args.get('user'))
+    return render_template ("blogs.html",blogs=blogs)
 
 @app.route('/new_blog',methods=['GET','POST'])
 def new_blog():
@@ -93,6 +93,54 @@ def login():
 def logout():
     del session['user']
     return redirect('/')
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register(): 
+    if request.method == "POST":
+        username=request.form["username"]
+        password=request.form["password"]
+        verifypassword=request.form["verifypassword"]
+        email=request.form["email"]
+
+        Username_Error=""
+        Password_Error=""
+        Valid_Error=""
+        Email_Error=""
+
+        if len(username)<3 or len(username)>=20:
+            Username_Error="Please input valid username."
+
+        if len(password)<3 or len(password)>=20:
+            Password_Error="Please input valid password."
+        
+        elif password!=verifypassword:
+            Valid_Error="Passwords doesn't match."
+    
+        if email:
+            if "@" not in email and  "."not in email:
+                Email_Error="Email not valid."
+
+        if not Username_Error and not Password_Error and not Valid_Error and not Email_Error:
+            return render_template("welcome.html", Username=username, email=email, user_error=Username_Error, password_error=Password_Error, verify_error=Valid_Error, email_error=Email_Error)
+        else:
+            return render_template("index.html", Username=username, email=email, user_error=Username_Error, password_error=Password_Error, verify_error=Valid_Error, email_error=Email_Error)
+
+        
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user is not none:
+            error["username_error"] = "There is already somebody with that username"
+
+        if error["username_error"] == "" and error["password_error"] == "" and error["valid_error"] == "":
+            new_user = User(username, password)
+            db.session.add(new_user)
+            db.session.commit()
+            session['user'] = new_user.username
+            return redirect("/blog")
+
+    return render_template("register.html", title= "Register for this Blog",
+        Username_error= username_error["username_error"], password_error= error["password_error"],
+        valid_error= error["valid_error"])
 
 if __name__ == "__main__":
     app.run()
