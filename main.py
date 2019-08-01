@@ -82,12 +82,16 @@ def new_blog():
 @app.route('/log-in',methods=['GET',"POST"])
 def login():
 
-    isUser = User.query.fitler_by(name = request.form['user']).all()
+    if request.method == 'POST':
 
-    if isUser and isUser.password == request.form['password']:
+        isUser = User.query.filter_by(name = request.form['user']).first()
 
-        session['user'] = request.form['user']
-        redirect['/new_blog']
+        if isUser and isUser.password == request.form['password']:
+
+            session['user'] = request.form['user']
+            redirect['/new_blog']
+
+    return render_template('log-in.html')
 
 @app.route('/log-out')
 def logout():
@@ -139,7 +143,7 @@ def register():
             return redirect("/blog")
 
     return render_template("register.html", title= "Register for this Blog",
-        Username_error= username_error["username_error"], password_error= error["password_error"],
+        username_error= username_error["username_error"], password_error= error["password_error"],
         valid_error= error["valid_error"])
 
 if __name__ == "__main__":
